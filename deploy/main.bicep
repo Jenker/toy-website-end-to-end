@@ -53,11 +53,11 @@ var environmentConfigurationMap = {
         name: 'Standard_LRS'
       }
     }
-  }
-  sqlDatabase: {
-    sku: {
-      name: 'Standard'
-      tier: 'Standard'
+    sqlDatabase: {
+      sku: {
+        name: 'Standard'
+        tier: 'Standard'
+      }
     }
   }
   Test: {
@@ -153,6 +153,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   location: location
   kind: 'StorageV2'
   sku: environmentConfigurationMap[environmentType].storageAccount.sku
+
   resource blobService 'blobServices' = {
     name: 'default'
 
