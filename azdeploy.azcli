@@ -1,0 +1,45 @@
+//Create a workload identity for deployments to your test environment
+testApplicationRegistrationDetails=$(az ad app create --display-name 'toy-website-end-to-end-test')
+testApplicationRegistrationObjectId=$(echo $testApplicationRegistrationDetails | jq -r '.id')
+testApplicationRegistrationAppId=$(echo $testApplicationRegistrationDetails | jq -r '.appId')
+
+az ad app federated-credential create \
+   --id $testApplicationRegistrationObjectId \
+   --parameters "{\"name\":\"toy-website-end-to-end-test\",\"issuer\":\"https://token.actions.githubusercontent.com\",\"subject\":\"repo:${githubOrganizationName}/${githubRepositoryName}:environment:Test\",\"audiences\":[\"api://AzureADTokenExchange\"]}"
+
+az ad app federated-credential create \
+   --id $testApplicationRegistrationObjectId \
+   --parameters "{\"name\":\"toy-website-end-to-end-test-branch\",\"issuer\":\"https://token.actions.githubusercontent.com\",\"subject\":\"repo:${githubOrganizationName}/${githubRepositoryName}:ref:refs/heads/main\",\"audiences\":[\"api://AzureADTokenExchange\"]}"
+
+
+//Run the following code, which creates a similar workload identity and federated credentials for the production environment:
+productionApplicationRegistrationDetails=$(az ad app create --display-name 'toy-website-end-to-end-production')
+productionApplicationRegistrationObjectId=$(echo $productionApplicationRegistrationDetails | jq -r '.id')
+productionApplicationRegistrationAppId=$(echo $productionApplicationRegistrationDetails | jq -r '.appId')
+
+az ad app federated-credential create \
+   --id $productionApplicationRegistrationObjectId \
+   --parameters "{\"name\":\"toy-website-end-to-end-production\",\"issuer\":\"https://token.actions.githubusercontent.com\",\"subject\":\"repo:${githubOrganizationName}/${githubRepositoryName}:environment:Production\",\"audiences\":[\"api://AzureADTokenExchange\"]}"
+
+az ad app federated-credential create \
+   --id $productionApplicationRegistrationObjectId \
+   --parameters "{\"name\":\"toy-website-end-to-end-production-branch\",\"issuer\":\"https://token.actions.githubusercontent.com\",\"subject\":\"repo:${githubOrganizationName}/${githubRepositoryName}:ref:refs/heads/main\",\"audiences\":[\"api://AzureADTokenExchange\"]}"
+
+//Create two resource groups in Azure and grant the workload identity access
+//create the test environment's resource group and grant the workload identity access to it
+testResourceGroupResourceId=$(az group create --name ToyWebsiteTest --location westeurope --query id --output tsv)
+
+az ad sp create --id $testApplicationRegistrationObjectId
+az role assignment create \
+   --assignee $testApplicationRegistrationAppId \
+   --role Contributor \
+   --scope $testResourceGroupResourceId
+
+//Run a similar process to create the production environment's resource group:
+productionResourceGroupResourceId=$(az group create --name ToyWebsiteProduction --location westus3 --query id --output tsv)
+
+az ad sp create --id $productionApplicationRegistrationObjectId
+az role assignment create \
+   --assignee $productionApplicationRegistrationAppId \
+   --role Contributor \
+   --scope $productionResourceGroupResourceId
